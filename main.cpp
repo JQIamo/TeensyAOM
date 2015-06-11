@@ -10,7 +10,7 @@
 
 
 // Setup the LCD and encoder.
-SPISettings SPI_settings_dac_vco_tune(30000000, MSBFIRST, SPI_MODE2);
+SPISettings SPI_settings_dac(30000000, MSBFIRST, SPI_MODE2);
 SPISettings SPI_settings_rf_atten(10000000, MSBFIRST, SPI_MODE2);
 LCD lcd(LCD_RST, LCD_RS, LCD_CS);
 
@@ -24,7 +24,7 @@ void write_dac_vco_tune(int value) {
     digitalWrite(DAC_SYNC, HIGH);
 }
 
-void write_rf_atten(uint8_t data) {
+void write_atten(uint8_t data) {
     digitalWrite(ATTEN_LE, LOW);
     digitalWrite(ATTEN_CLK, LOW);
     digitalWrite(ATTEN_MOSI, LOW);
@@ -46,135 +46,107 @@ void write_rf_atten(uint8_t data) {
     digitalWrite(ATTEN_LE, LOW);
 }
 
-// Define the global menu structure:
-
-String main_menu_labels[] = {"VCO frequency", "RF Attenuation", "Int/Ext RF TTL", "VCO on/off   "};
-Menu main_menu(4, main_menu_labels);
-
 
 
 void main_menu_press_event(Encoder *this_encoder) {
     lcd.clear();
-    main_menu.switch_to_mode((main_menu.current_knob())->position()%4);
+    main_menu.switch_to_mode(enc_main_menu.position());
 }
 
-void main_menu_hold_event(Encoder *this_encoder) {
+void about_this_box(Encoder *this_encoder) {
     lcd.write("80 MHz TeensyAOM", 0x00);
     lcd.write("N. Anderson, JQI", 0x40);
-    delay(7000);
+    delay(1000);
 }
 
-Encoder enc_main_menu(ENC_A, ENC_B, ENC_SW, main_menu_press_event, main_menu_hold_event);
+// For the instantiation of the Encoders/Menus, we will break from the Google C++ style guide and use indentation to indicate the nesting structure:
+Encoder enc_main_menu(ENC_A, ENC_B, ENC_SW);
+    Encoder enc_vco_tune(ENC_A, ENC_B, ENC_SW);
+    Encoder enc_attenuation(ENC_A, ENC_B, ENC_SW, RF_atten_press_event, go_to_main_menu);
+    Encoder enc_int_ext_output_ctrl(ENC_A, ENC_B, ENC_SW, int_ext_ctrl_press_event, go_to_main_menu);
+    Encoder enc_VCO_on_off(ENC_A, ENC_B, ENC_SW, VCO_on_off_press_event, go_to_main_menu);
 
-void main_menu_select_mode(Menu* this_menu) {
-    lcd.write(this_menu->mode_label(enc_main_menu.position() % 4) + "      ", 0x40);
-    lcd.write("MAIN MENU:         ",00);
+void menu(Menu* this_menu) {
+    lcd.write(this_menu->mode_name() + "       ",0x00);
+    lcd.write(this_menu->mode_name(enc_main_menu.position()) + "       ", 0x40);
     enc_main_menu.button_state();
 }
 
-
-float nominal_vco_freq(int position) {
+float vco_freq(int position) {
     float MHz_per_bit = 50.0/(62885.0-42943.0);
     return (100.0 - MHz_per_bit*(position - 42943.0));
 }
 
-void VCO_freq_press_event(Encoder *this_encoder) {
+void vco_freq_press_event(Menu *this_menu) {
     this_encoder->change_step_size();
 }
 
-void go_to_main_menu(Encoder *this_encoder) {
+// This will be the hold event for every menu except main_menu.
+void go_to_menu(Menu *this_menu) {
     delay(20);
-    main_menu.switch_to_select();
+    this_menu->switch_to_menu();
     lcd.clear();
-    lcd.write("Main Menu...", 0x00);
-    delay(1000);
+    lcd.write(this_menu->mode_name() 0x00);
+    delay(750);
 }
 
-void RF_atten_press_event(Encoder *this_encoder) {
+void attenuation_press_event(Encoder *this_encoder) {
     lcd.write("Click!", 0x00);
 }
 
-void int_ext_rf_press_event(Encoder *this_encoder) {
+void int_ext_ctrl_press_event(Encoder *this_encoder) {
     if (this_encoder->position() % 2 == 0) {
-        for(int i = 0; i < 5; i++) {
-            lcd.write("INT RF TTL CTRL   ",0x40);
-            delay(100);
-            lcd.clear();
-            delay(50);
-        }
         digitalWrite(INT_EXT_OUTPUT_CTL, LOW);
-        delay(250);
+        lcd.flash_string("INT TTL CTRL   ",0x40);
     }
     else {
-        for(int i = 0; i < 5; i++) {
-            lcd.write("EXT RF TTL CTRL   ",0x40);
-            delay(100);
-            lcd.clear();
-            delay(50);
-        }
         digitalWrite(INT_EXT_OUTPUT_CTL, HIGH);
-        delay(200);
+        lcd.flash_string("EXT TTL CTRL   ",0x40);
     }
-    main_menu.switch_to_select();
+    main_menu.switch_to_menu();
 }
 
-void VCO_on_off_press_event(Encoder *this_encoder) {
+void vco_on_off_press_event(Encoder *this_encoder) {
     if (this_encoder->position() % 2 == 0) {
-        for(int i = 0; i < 5; i++) {
-            lcd.write("   --VCO ON--   ",0x40);
-            delay(100);
-            lcd.clear();
-            delay(50);
-        }
         digitalWrite(VCO_EN, HIGH);
-        delay(250);
+        lcd.flash_string("   --VCO ON--   ",0x40);
     }
     else {
-        for(int i = 0; i < 5; i++) {
-            lcd.write("   --VCO OFF--   ",0x40);
-            delay(100);
-            lcd.clear();
-        }
-        delay(50);
         digitalWrite(VCO_EN, LOW);
-        delay(250);
+        lcd.flash_string("   --VCO OFF--   ",0x40);
     }
-    main_menu.switch_to_select();
+    main_menu.switch_to_menu();
 }
 
 
 
-Encoder enc_VCO_freq(ENC_A, ENC_B, ENC_SW, VCO_freq_press_event, go_to_main_menu);
-String step_labels_VCO_freq[] = {"LSB   ", "10 KHz", "1 MHz"};
+
+
 int step_sizes_VCO_freq[] = {1,4,399};
 
-Encoder enc_RF_atten(ENC_A, ENC_B, ENC_SW, RF_atten_press_event, go_to_main_menu);
 
-Encoder enc_int_ext_rf_select(ENC_A, ENC_B, ENC_SW, int_ext_rf_press_event, go_to_main_menu);
 
-Encoder enc_VCO_on_off(ENC_A, ENC_B, ENC_SW, VCO_on_off_press_event, go_to_main_menu);
-
-void VCO_tune_mode() {
+void mode_VCO_tune() {
     lcd.write("VCO TUNE: " + enc_VCO_freq.step_size_label() + "     ",0x00);
     enc_VCO_freq.button_state();
     write_dac_vco_tune(enc_VCO_freq.position());
-    lcd.write("freq " + String(nominal_vco_freq(enc_VCO_freq.position()),3) + " MHz  ",0x40);
+    lcd.write("Freq " + String(vco_freq(enc_VCO_freq.position()),3) + " MHz  ",0x40);
 }
 
-float percent_atten(int val) {
-    return (31.5*(float)val)/63;
+float percent_attenuation(int value) {
+    return (31.5*(float)value)/63;
 }
 
-void RF_atten_mode() {
+void mode_attenuation() {
     lcd.write("RF ATTEN: LSB   ",0x00);
-    lcd.write(String("atten:   " + String(percent_atten(enc_RF_atten.position()),1)+" dB "), 0x40);
-    enc_RF_atten.button_state();
-    write_rf_atten(enc_RF_atten.position());
+    lcd.write(String("Atten:   " + String(percent_attenuation(enc_attenuation.position()),1)+" dB "), 0x40);
+    enc_attenuation.button_state();
+    write_atten(enc_attenuation.position());
 }
 
-void int_ext_rf_select_mode() {
+void mode_int_ext_output_ctrl() {
     lcd.write("SELECT:          ", 0x00);
-    if (enc_int_ext_rf_select.position() % 2 == 0) {
+    if (enc_int_ext_output_ctrl.position() % 2 == 0) {
         lcd.write("INT RF TTL CTRL    ",0x40);
         digitalWrite(INT_EXT_OUTPUT_CTL, LOW);
     }
@@ -182,7 +154,7 @@ void int_ext_rf_select_mode() {
         lcd.write("EXT RF TTL CTRL    ",0x40);
         digitalWrite(INT_EXT_OUTPUT_CTL, HIGH);
     }
-    enc_int_ext_rf_select.button_state();
+    enc_int_ext_output_ctrl.button_state();
 }
 
 void VCO_on_off_mode () {
@@ -196,7 +168,7 @@ void VCO_on_off_mode () {
     enc_VCO_on_off.button_state();
 }
 
-void (*modes[4])() = {VCO_tune_mode, RF_atten_mode, int_ext_rf_select_mode, VCO_on_off_mode};
+void (*modes[4])() = {mode_VCO_tune, mode_attenuation, mode_int_ext_output_ctrl, VCO_on_off_mode};
 
 void encoder_interrupt_wrapper() {
     if (main_menu.menu_select()) {
@@ -207,10 +179,10 @@ void encoder_interrupt_wrapper() {
             enc_VCO_freq.interrupt();
         }
         else if (main_menu.current_mode() == 1) {
-            enc_RF_atten.interrupt();
+            enc_attenuation.interrupt();
         }
         else if (main_menu.current_mode() == 2) {
-            enc_int_ext_rf_select.interrupt();
+            enc_int_ext_output_ctrl.interrupt();
         }
         else if (main_menu.current_mode() == 3) {
             enc_VCO_on_off.interrupt();
@@ -277,9 +249,9 @@ void setup() {
     enc_main_menu.init(2 << 14, 0, 65000);
     main_menu.attach_menu_knob(&enc_main_menu);
     main_menu.attach_mode_select(main_menu_select_mode);
-    main_menu.attach_mode(0,VCO_tune_mode);
-    main_menu.attach_mode(1,RF_atten_mode);
-    main_menu.attach_mode(2,int_ext_rf_select_mode);
+    main_menu.attach_mode(0,mode_VCO_tune);
+    main_menu.attach_mode(1,mode_attenuation);
+    main_menu.attach_mode(2,mode_int_ext_output_ctrl);
     main_menu.attach_mode(3,VCO_on_off_mode);
 
     // Mode 0:
@@ -289,11 +261,11 @@ void setup() {
     main_menu.attach_knob_to_mode(0, &enc_VCO_freq);
 
     // Mode 1:
-    enc_RF_atten.init(63, 0, 63);
-    main_menu.attach_knob_to_mode(1, &enc_RF_atten);
+    enc_attenuation.init(63, 0, 63);
+    main_menu.attach_knob_to_mode(1, &enc_attenuation);
 
     // Mode 2:
-    enc_int_ext_rf_select.init(2 << 14, 0, 65000);
+    enc_int_ext_output_ctrl.init(2 << 14, 0, 65000);
 
     // Mode 3:
     enc_VCO_on_off.init(2 << 14, 0, 65000);
