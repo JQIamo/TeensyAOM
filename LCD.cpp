@@ -76,7 +76,7 @@ void LCD::clear(){
 }
 
 void LCD::write(String data, byte addr) {
-    LCD:write(data.c_str(), addr);
+    LCD::write(data.c_str(), addr);
 }
 
 void LCD::clear_1st_line(){

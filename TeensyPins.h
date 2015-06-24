@@ -21,32 +21,41 @@
 */
 
 // LCD pins
-#define LCD_RST 20
-#define LCD_RS 21
-#define LCD_CS 22
+#define LCD_RST 6
+#define LCD_RS 7
+#define LCD_CS 8
 // Rotary encoder pins
-#define ENC_A 9
-#define ENC_B 23
+#define ENC_A 2
+#define ENC_B 1
 #define ENC_SW 0
-// Toggle switch
-#define TOGGLE_SW 1
 
-#define INT_EXT_RF_CTL 2
-#define TEENSY_RF_TTL 3
-#define INT_EXT_OUTPUT_CTL 4
-#define TEENSY_OUTPUT_TTL 5
-#define SERVO_CTL 6
-#define SETPT_CTL 7
-#define VCO_EN 8
-#define EXT_DITHER_CTL 10
+#define ENC_A2 5
+#define ENC_B2 4
+#define ENC_SW2 3
+
+
+// Toggle switch
+#define TOGGLE_SW 30  // SW_3
+#define SW4 29
+
+
+
+#define INT_EXT_RF_CTL 9
+#define TEENSY_RF_TTL 20// INT_RF_TTL
+#define INT_EXT_OUTPUT_CTL 28
+#define TEENSY_OUTPUT_TTL 27 //INT_OUTPUT_TTL
+#define SERVO_CTL 31 //SEVO_SEL0
+#define SETPT_CTL 32 //SERVO_SEL1
+#define VCO_EN 21
+#define EXT_DITHER_CTL 31 //REMAPPED TO SEVO_SEL0 AGAIN!
 #define MOSI 11
 #define SCK 13
-#define DAC_CLR 14
+#define DAC_CLR 16
 #define DAC_LDAC 15
-#define DAC_RST 16
-#define DAC_SYNC 17
+#define DAC_RST  31 // NO NEED FOR IT! REMAPPED TO SERVO_SEL0 AGAIN!!!
+#define DAC_SYNC 14
 #define SDA 18
 #define SCL 19
-#define ATTEN_CLK 25
-#define ATTEN_MOSI 26
-#define ATTEN_LE 24
+#define ATTEN_CLK  25 //ATTEN_SCK
+#define ATTEN_MOSI 24
+#define ATTEN_LE 26
